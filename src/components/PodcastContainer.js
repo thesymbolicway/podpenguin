@@ -4,30 +4,49 @@ import axios from 'axios';
 import xml2js from 'xml2js';
 import AudioPlayer from './AudioPlayer';
 
+
 const PodcastContainer = ({ podcast }) => {
   const { image, title, author, link, audioUrl, description, originalUrl  } = podcast;
   const [episodes, setEpisodes] = useState([]);
   const [doubleClicked, setDoubleClicked] = useState(false)
+  const [podcastCount, setPodcastCount] = useState(0);
+
   useEffect(() => {
-    // Make an HTTP GET request to the originalUrl
-    axios.get(originalUrl).then((response) => {
-      // Parse the XML data
-      xml2js.parseString(response.data, (err, result) => {
-        if (err) {
-          console.error(err);
-        } else {
-          // Update state with the parsed podcast data
-          setEpisodes(result.rss.channel[0].item);
-        }
-      });
-    });
+    if (podcastCount < 3) {
+      fetch(originalUrl)
+        .then(response => {
+          if (response.ok) {
+            return response.text();
+          } else {
+            throw new Error('Error fetching podcast XML data');
+          }
+        })
+        .then(responseText => {
+          xml2js.parseString(responseText, (err, result) => {
+            if (err) {
+              console.error(err);
+            } else if (result.rss && result.rss.channel && result.rss.channel[0] && result.rss.channel[0].item) {
+              setEpisodes(result.rss.channel[0].item);
+            }
+          });
+        })
+        .catch(error => {
+          console.error(error);
+        });
+  
+      setPodcastCount(podcastCount + 1);
+    }
   }, [originalUrl]);
-//  Add an event handler for the onClick event for the container element
+  
+  
+  
   const handleDoubleClick = () => {
-    setDoubleClicked(true);
+    setDoubleClicked(!doubleClicked);
+    document.cookie = "doubleClicked=true; SameSite=Lax";
   };
-  // Use the map() method to iterate over the episodes
-  // and display the information for each episode
+  
+  
+
 
   const episodeList = episodes.map(episode => (
     <li key={episode.guid[0]._}>
@@ -43,7 +62,7 @@ const PodcastContainer = ({ podcast }) => {
   
       {/* Add the AudioPlayer component here */}
       {episode.link && <AudioPlayer audioUrl={episode.link} />}
-  
+      {console.log(episode.link)}
       {console.log(episode)}
     </li>
   ));
@@ -67,13 +86,15 @@ return (
         <h1>{title}</h1>
         <h3>{author}</h3>
         <p>{description}</p>
-  
-        {/* Conditionally render the episode list only if doubleClicked is true */}
+
         {doubleClicked && (
-          <ul>
-            {episodeList}
-          </ul>
-        )}
+  <ul>
+    {episodeList}
+ 
+  </ul>
+  
+)}
+
       </div>
     );
   };
